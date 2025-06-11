@@ -300,3 +300,21 @@ The type reachability algorithm is implemented in `typesafe_llm/parser/types_ts.
 The automaton for statements is defined in `typesafe_llm/automata/parser_ts.py` in the class `StatementParserState`.
 It handles the constraining for valid return types.
 The automaton for the entire program is defined in `typesafe_llm/automata/parser_ts.py` in the class `ProgramParserState`.
+
+
+## FAQ
+
+### Can you reuse compilers for type-constrained decoding?
+
+No. The problem with traditional compilers is that they only provide feedback on a *completed* program. Meanwhile, to guide the LLM during generation effectively, we need feedback on the partially generated programs. Therefore compiler can not be reused for type-constrained decoding.
+
+### Can you reuse LSPs / Static Analyzers / Tree-Sitter / etc for type-constrained decoding?
+
+No. These systems are designed to aid humans during development and not for reliable incremental parsing. As such, while LSPs and other systems are helpful and may be able to handle some partial programs, they usually do not guarantee being able to handle *arbitrary* partial programs. For example, LSPs are useful for providing possible members of objects or parameter types for calls, and have been used  for this purpose [1,2], however, they can not always handle partial syntax trees, may not provide help when they fail to derive an object's type, and can not predict whether a partial expression can be completed into the required type of the current context. To reliably provide steering and constraints for all partial programs, we had to build our custom incremental parser.
+
+[1] Agrawal et. al., "Monitor-Guided Decoding of Code LMs with Static Analysis of Repository Context", NeurIPS 2023 ([link](https://openreview.net/forum?id=qPUbKxKvXq))  
+[2] Gvero et. al., "Complete Completion using Types and Weights", ACM Sigplan 2013 ([link](https://dl.acm.org/doi/10.1145/2499370.2462192))  
+
+### Are you aware of any implementation in another language than TypeScript?
+
+No. As far as we know, such a constraining algorithm has to be implemented manually for every language. As such, we are not aware of any implementations of our method for other languages yet (as of June 2025).
