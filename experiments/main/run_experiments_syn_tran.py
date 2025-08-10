@@ -55,7 +55,7 @@ CONSTRAINEDS = [False, True]
 TIMEOUT = 300
 MAX_TOKENS = 1000
 TRY_TOP_K = 10000000000000000
-
+TRIALS = 5
 
 def find_available_gpus(gpus, n):
     found_gpus = []
@@ -86,6 +86,7 @@ def main(
     gpu_size=GPUSIZE,
     gpus=GPUS,
     n_process_per_gpu=N,
+    trials=TRIALS,
 ):
     try_top_k = TRY_TOP_K
     if isinstance(models, str):
@@ -146,7 +147,8 @@ def main(
                 if pipe.returncode != 0:
                     remaining_configs.append(config)
         cuda_devices, needed_gpus = [], 1
-        cuda_devices = find_available_gpus(gpus, n_process_per_gpu)
+        # cuda_devices = find_available_gpus(gpus, n_process_per_gpu)
+        cuda_devices = gpus
         total_config = None
         for total_config in remaining_configs:
             (
@@ -159,6 +161,7 @@ def main(
                 subset,
             ) = total_config
             needed_gpus = compute_needed_gpus(MODEL_SIZE_MAP[model], gpu_size)
+            print("Needed GPUs:", needed_gpus)
             if needed_gpus > len(gpus):
                 print(f"Model {model} is too large to fit on available GPUs, skipping")
                 remaining_configs.remove(total_config)
@@ -185,9 +188,9 @@ def main(
         else:
             suffix = "nc"
         command = (
-            f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple.py "
+            f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple_with_trials.py "
             f"--max-tokens {max_tokens} --timeout {timeout} --model_name {model} --seed {seed} --temp {temp} --subset {subset}  --try_top_k {try_top_k} "
-            f"--constrained {constrained} --output_file 'results/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}{name}_{suffix}.jsonl' {config}"
+            f"--constrained {constrained} --output_file 'results{trials}/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}{name}_{suffix}.jsonl' --trials {trials} {config}"
         )
         print("+ " + command)
         pipe = subprocess.Popen(["/bin/bash", "-c", command], cwd=parent)
