@@ -294,6 +294,7 @@ def main(
 
                 compiler_output = compile_test_and_dump(
                         output_file,
+                        trial == trials - 1, # is last trial
                         {
                             "dataset": dataset_name,
                             "language": language,
@@ -323,14 +324,14 @@ def main(
                     break
 
 
-def compile_test_and_dump(output_file: str, specs: dict):
+def compile_test_and_dump(output_file: str, is_last_trial: bool, specs: dict):
     try:
         compiled, compiler_output = LANGUAGE_COMPILER_MAP[specs["language"]](
             specs["compilable"], specs["timeout"]
         )
 
         # if compiler_output is not empty, there are compilation errors
-        if not compiler_output == None and not compiler_output.strip() == "":
+        if not compiler_output == None and not compiler_output.strip() == "" and not is_last_trial:
             return compiler_output
 
         if compiled is not None:
