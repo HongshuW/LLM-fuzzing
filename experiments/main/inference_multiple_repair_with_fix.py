@@ -239,8 +239,8 @@ def main(
                             },
                         ]
                     )
-                    print("Fixing...")
-                    print(messages)
+                    # print("Fixing...")
+                    # print(messages)
                 prompt = tokenizer.apply_chat_template(
                     messages, tokenize=False, add_generation_prompt=True
                 )
