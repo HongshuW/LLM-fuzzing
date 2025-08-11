@@ -48,7 +48,7 @@ constraineds = [False, True]
 timeout = 300
 max_tokens = 1000
 try_top_k = 10000000000000000
-
+TRIALS = 5
 
 def find_available_gpus(gpus, n):
     found_gpus = []
@@ -78,6 +78,7 @@ def main(
     gpu_size=GPUSIZE,
     gpus=GPUS,
     n_process_per_gpu=N,
+    trials=TRIALS,
 ):
     if isinstance(models, str):
         models = models.split(",")
@@ -129,6 +130,7 @@ def main(
                 if pipe.returncode != 0:
                     remaining_configs.append(config)
         cuda_devices, needed_gpus = find_available_gpus(gpus, n_process_per_gpu), 1
+        cuda_devices = gpus
         total_config = None
         for total_config in remaining_configs:
             (
@@ -165,9 +167,9 @@ def main(
         else:
             suffix = "nc"
         command = (
-            f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple_repair.py "
+            f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple_repair_with_trials.py "
             f"--max-tokens {max_tokens} --timeout {timeout} --model_name {model} --seed {seed} --temp {temp} --subset {subset} --try_top_k {try_top_k} "
-            f"--constrained {constrained} --output_file 'results/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}_repair-all_{suffix}.jsonl' {config}"
+            f"--constrained {constrained} --output_file 'results{trials}/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}_repair-all_{suffix}.jsonl' --trials {trials} {config}"
         )
         print("+ " + command)
         pipe = subprocess.Popen(["/bin/bash", "-c", command], cwd=parent)

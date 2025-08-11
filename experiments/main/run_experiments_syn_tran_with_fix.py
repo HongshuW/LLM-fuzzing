@@ -188,9 +188,9 @@ def main(
         else:
             suffix = "nc"
         command = (
-            f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple_with_trials.py "
+            f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple_with_fix.py "
             f"--max-tokens {max_tokens} --timeout {timeout} --model_name {model} --seed {seed} --temp {temp} --subset {subset}  --try_top_k {try_top_k} "
-            f"--constrained {constrained} --output_file 'results{trials}/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}{name}_{suffix}.jsonl' --trials {trials} {config}"
+            f"--constrained {constrained} --output_file 'results_with_fix/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}{name}_{suffix}.jsonl' {config}"
         )
         print("+ " + command)
         pipe = subprocess.Popen(["/bin/bash", "-c", command], cwd=parent)

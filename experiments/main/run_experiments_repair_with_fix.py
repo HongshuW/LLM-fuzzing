@@ -38,23 +38,16 @@ MODEL_SIZE_MAP = {
 
 
 def compute_needed_gpus(size_model, size_gpu):
-    return (size_model * 2 * 1.15) / size_gpu
+    return (size_model * 2 * 1.2) / size_gpu
 
 
-SUBSETS = ["humaneval", "mbpp"]
-TEMPS = ["1"]
-SEEDS = [0]
-CONFIGS = [
-    ("", "_synth"),
-    (
-        "--input_file '../translation/{}/dataset.json' --translate True --translation_source_lang Python",
-        "_translate",
-    ),
-]
-CONSTRAINEDS = [False, True]
-TIMEOUT = 300
-MAX_TOKENS = 1000
-TRY_TOP_K = 10000000000000000
+subsets = ["humaneval", "mbpp"]
+temps = ["1"]
+seeds = [0]
+constraineds = [False, True]
+timeout = 300
+max_tokens = 1000
+try_top_k = 10000000000000000
 TRIALS = 5
 
 def find_available_gpus(gpus, n):
@@ -75,20 +68,18 @@ def find_available_gpus(gpus, n):
 
 
 def main(
-    subsets=SUBSETS,
-    seeds=SEEDS,
-    temps=TEMPS,
-    constraineds=CONSTRAINEDS,
+    subsets=subsets,
+    seeds=seeds,
+    temps=temps,
+    constraineds=constraineds,
     models=list(MODEL_SIZE_MAP.keys()),
-    timeout=TIMEOUT,
-    max_tokens=MAX_TOKENS,
-    tasks=["synth", "translate"],
+    timeout=timeout,
+    max_tokens=max_tokens,
     gpu_size=GPUSIZE,
     gpus=GPUS,
     n_process_per_gpu=N,
     trials=TRIALS,
 ):
-    try_top_k = TRY_TOP_K
     if isinstance(models, str):
         models = models.split(",")
     if isinstance(subsets, str):
@@ -105,8 +96,6 @@ def main(
         constraineds = [constraineds == "True"]
     elif isinstance(constraineds, int):
         constraineds = [constraineds != 0]
-    if isinstance(tasks, str):
-        tasks = tasks.split(",")
     if isinstance(gpus, str):
         gpus = [int(x) for x in gpus.split(",")]
     elif isinstance(gpus, int):
@@ -115,27 +104,21 @@ def main(
     assert all(subset in ["humaneval", "mbpp"] for subset in subsets)
     assert all(model in MODEL_SIZE_MAP for model in models)
 
-    configs = [(config, name) for config, name in CONFIGS if name[1:] in tasks]
     total_configs = []
-    for constrained in constraineds:
-        for subset in subsets:
-            for seed in seeds:
-                for temp in temps:
-                    for config, name in configs:
-                        for model in models:
-                            if subset == "mbpp" and seed != 0:
-                                continue
-                            total_configs.append(
-                                (
-                                    seed,
-                                    temp,
-                                    config,
-                                    name,
-                                    constrained,
-                                    model,
-                                    subset,
-                                )
+    for subset in subsets:
+        for seed in seeds:
+            for temp in temps:
+                for constrained in constraineds:
+                    for model in models:
+                        total_configs.append(
+                            (
+                                seed,
+                                temp,
+                                constrained,
+                                model,
+                                subset,
                             )
+                        )
 
     remaining_configs = total_configs.copy()
     running_configs = list()
@@ -146,22 +129,18 @@ def main(
                 running_configs.remove((config, pipe))
                 if pipe.returncode != 0:
                     remaining_configs.append(config)
-        cuda_devices, needed_gpus = [], 1
-        # cuda_devices = find_available_gpus(gpus, n_process_per_gpu)
+        cuda_devices, needed_gpus = find_available_gpus(gpus, n_process_per_gpu), 1
         cuda_devices = gpus
         total_config = None
         for total_config in remaining_configs:
             (
                 seed,
                 temp,
-                config,
-                name,
                 constrained,
                 model,
                 subset,
             ) = total_config
             needed_gpus = compute_needed_gpus(MODEL_SIZE_MAP[model], gpu_size)
-            print("Needed GPUs:", needed_gpus)
             if needed_gpus > len(gpus):
                 print(f"Model {model} is too large to fit on available GPUs, skipping")
                 remaining_configs.remove(total_config)
@@ -180,17 +159,17 @@ def main(
             continue
         remaining_configs.remove(total_config)
         cuda_devices = cuda_devices[: int(ceil(needed_gpus))]
-        if "translate True" in config:
-            config = config.format("humaneval-x" if subset == "humaneval" else subset)
+
+        config = f" --input_file 'repair_datasets/{subset}_repair_dataset.jsonl'"
 
         if constrained:
             suffix = "c"
         else:
             suffix = "nc"
         command = (
-            f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple_with_trials.py "
-            f"--max-tokens {max_tokens} --timeout {timeout} --model_name {model} --seed {seed} --temp {temp} --subset {subset}  --try_top_k {try_top_k} "
-            f"--constrained {constrained} --output_file 'results{trials}/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}{name}_{suffix}.jsonl' --trials {trials} {config}"
+            f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple_repair_with_fix.py "
+            f"--max-tokens {max_tokens} --timeout {timeout} --model_name {model} --seed {seed} --temp {temp} --subset {subset} --try_top_k {try_top_k} "
+            f"--constrained {constrained} --output_file 'results_with_fix/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}_repair-all_{suffix}.jsonl' {config}"
         )
         print("+ " + command)
         pipe = subprocess.Popen(["/bin/bash", "-c", command], cwd=parent)
