@@ -51,11 +51,11 @@ CONFIGS = [
         "_translate",
     ),
 ]
-CONSTRAINEDS = [False, True]
+CONSTRAINEDS = [True]
 TIMEOUT = 300
 MAX_TOKENS = 1000
 TRY_TOP_K = 10000000000000000
-TRIALS = 5
+TRIALS = 1
 
 def find_available_gpus(gpus, n):
     found_gpus = []

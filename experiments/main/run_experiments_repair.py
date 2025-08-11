@@ -44,11 +44,11 @@ def compute_needed_gpus(size_model, size_gpu):
 subsets = ["humaneval", "mbpp"]
 temps = ["1"]
 seeds = [0]
-constraineds = [False, True]
+constraineds = [True]
 timeout = 300
 max_tokens = 1000
 try_top_k = 10000000000000000
-TRIALS = 5
+TRIALS = 1
 
 def find_available_gpus(gpus, n):
     found_gpus = []

@@ -335,7 +335,7 @@ def main(
                     # compilation errors
                     print("Compiler output:", compiler_output)
                     trial += 1
-                    previous_code = compilable
+                    previous_code = extracted
                     compilation_error = compiler_output
                 else:
                     break
