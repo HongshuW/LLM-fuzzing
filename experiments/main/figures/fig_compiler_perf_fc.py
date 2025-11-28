@@ -8,18 +8,13 @@ from tabulate import tabulate
 from experiments.main.analyze_inf_res import main as inf_res
 
 SUFFIXES = ["_synth", "_translate", "_repair-all"]
-SUBSETS = ["humaneval", "mbpp"]
+SUBSETS = ["humaneval"]
 SUBSET_SIZE = {
     "humaneval": 1,
-    "mbpp": 1,
 }
 MODEL_NAME_MAP = {
     "google/gemma-2-2b-it": "Gemma 2 2B",
     "google/gemma-2-9b-it": "Gemma 2 9B",
-    "google/gemma-2-27b-it": "Gemma 2 27B",
-    "deepseek-ai/deepseek-coder-33b-instruct": "DS Coder 33B",
-    "codellama/CodeLlama-34b-Instruct-hf": "CodeLlama 34B",
-    "Qwen/Qwen2.5-32B-Instruct": "Qwen2.5 32B",
 }
 
 
@@ -29,10 +24,6 @@ def main(
     models = (
         "google/gemma-2-2b-it",
         "google/gemma-2-9b-it",
-        "google/gemma-2-27b-it",
-        "deepseek-ai/deepseek-coder-33b-instruct",
-        "codellama/CodeLlama-34b-Instruct-hf",
-        "Qwen/Qwen2.5-32B-Instruct",
     )
     temp = 1
     condition = "compiler_output"
@@ -46,7 +37,7 @@ def main(
         id = defaultdict(float)
         total = defaultdict(int)
         for suffix in SUFFIXES:
-            seeds = [0] if subset == "mbpp" or "repair-all" in suffix else [0, 1, 2, 3]
+            seeds = [0]
             discard_unconstrained, discard_constrained = False, False
             for seed in seeds:
                 res, n, _ = inf_res(
@@ -58,6 +49,7 @@ def main(
                     show_list=False,
                     intersection=field == "compiler_output",
                 )
+                print("Unconstrained tests_passed:", res, n)
                 if res == "incomplete":
                     discard_unconstrained = True
                     discard_constrained = True
@@ -79,7 +71,6 @@ def main(
                 id[suffix] += res * n
                 res, n, _ = inf_res(
                     [
-                        f"{directory}/{subset}_{model.replace('/','_')}_s={seed}_t={temp}{suffix}_nc.jsonl",
                         f"{directory}/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}{suffix}_c.jsonl",
                     ],
                     field=field,
@@ -87,6 +78,7 @@ def main(
                     show_list=False,
                     intersection=field == "compiler_output",
                 )
+                print("Constrained tests_passed:", res, n)
                 if res == "incomplete":
                     discard_constrained = True
                     continue

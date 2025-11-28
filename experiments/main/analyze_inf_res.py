@@ -11,6 +11,7 @@ def main(
     show_list,
     intersection,
 ):
+    print("condition: ", condition)
     # mbpp or main size
     target_size = (
         (
@@ -66,6 +67,8 @@ def main(
                         )
                     else:
                         res = bool(outputs_by_instance_f[instance_id].get(field, True))
+                    # if len(outputs_files) > 1 and not res:
+                    #     print(file_name, res)
                     break
             res_pos = res
             if res_pos and show_list:

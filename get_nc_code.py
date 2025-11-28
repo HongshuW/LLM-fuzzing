@@ -1,11 +1,10 @@
 import os
 import json
 
-results_dir = "experiments/main/results"
-output_dir = "processed_results"
-new_output_dir = "processed_results_runtime"
+results_dir = "experiments/main/results_paper"
+output_dir = "processed_results_paper2"
+new_output_dir = "processed_results_paper2"
 
-# List all files in the results directory
 for filename in os.listdir(results_dir):
     file_path = os.path.join(results_dir, filename)
     if os.path.isfile(file_path):
@@ -27,7 +26,9 @@ for filename in os.listdir(results_dir):
                                 new_file_name = data["instance_id"]
                                 if "/" in new_file_name:
                                     new_file_name = new_file_name.split("/", 1)[0]
-                                if new_file_name in out_files and not data["compiler_output"] == "":
+                                if new_file_name in out_files and data["compiler_output"] == "" \
+                                    and not data["test_output"] == "Timeout" and not data["test_output"] == None \
+                                        and data["tests_passed"] and not "TypeError" in data["test_output"]["stderr"]:
                                     error_with_comment = data["compiler_output"].replace("\n", "\n// ")
                                     if data["test_output"] == "Timeout":
                                         stderr_with_comment = "\n// Timeout"
@@ -39,10 +40,11 @@ for filename in os.listdir(results_dir):
                                         stderr_with_comment = data["test_output"]["stderr"].replace("\n", "\n// ")
                                         stdout_with_comment = data["test_output"]["stdout"].replace("\n", "\n// ")
                                     
-                                    # file_content = data["compilable"] + "\n\n// Compilation Error\n// " + error_with_comment
                                     if data["compiled"] == None or data["compiled"] == "":
                                         continue
-                                    file_content = data["compiled"] + "\n\n// stdout" + stdout_with_comment + "\n\n// stderr" + stderr_with_comment
+                                    
+                                    file_content = data["compilable"] + "\n\n// Compilation Error\n// " + error_with_comment + "\n\n"
+                                    file_content += data["compiled"] + "\n\n// stdout" + stdout_with_comment + "\n\n// stderr" + stderr_with_comment
                                     
                                     # Create the output subfolder if it doesn't exist
                                     subfolder = os.path.join(new_output_dir, os.path.splitext(filename)[0])

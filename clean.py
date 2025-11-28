@@ -1,7 +1,7 @@
 import os
 import shutil
 
-output_dir = "processed_results_paper"
+output_dir = "processed_results_paper2"
 
 for folder_name in os.listdir(output_dir):
     folder_path = os.path.join(output_dir, folder_name)

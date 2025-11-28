@@ -8,18 +8,13 @@ from tabulate import tabulate
 from experiments.main.analyze_inf_res import main as inf_res
 
 SUFFIXES = ["_synth", "_translate", "_repair-all"]
-SUBSETS = ["humaneval", "mbpp"]
+SUBSETS = ["humaneval"]
 SUBSET_SIZE_REPAIR = {
-    "humaneval": 309,
-    "mbpp": 317,
+    "humaneval": 292,
 }
 MODEL_NAME_MAP = {
     "google/gemma-2-2b-it": "Gemma 2 2B",
     "google/gemma-2-9b-it": "Gemma 2 9B",
-    "google/gemma-2-27b-it": "Gemma 2 27B",
-    "deepseek-ai/deepseek-coder-33b-instruct": "DS Coder 33B",
-    "codellama/CodeLlama-34b-Instruct-hf": "CodeLlama 34B",
-    "Qwen/Qwen2.5-32B-Instruct": "Qwen2.5 32B",
 }
 
 
@@ -29,10 +24,6 @@ def main(
     models = (
         "google/gemma-2-2b-it",
         "google/gemma-2-9b-it",
-        "google/gemma-2-27b-it",
-        "deepseek-ai/deepseek-coder-33b-instruct",
-        "codellama/CodeLlama-34b-Instruct-hf",
-        "Qwen/Qwen2.5-32B-Instruct",
     )
     temp = 1
     condition = "compiler_output"
@@ -44,7 +35,7 @@ def main(
         dc = defaultdict(float)
         id = defaultdict(float)
         for suffix in SUFFIXES:
-            seeds = [0] if subset == "mbpp" or suffix == "_repair-all" else [0, 1, 2, 3]
+            seeds = [0]
             discard_unconstrained, discard_constrained = False, False
             for seed in seeds:
                 res, n, _ = inf_res(

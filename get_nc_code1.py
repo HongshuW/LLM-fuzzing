@@ -1,27 +1,22 @@
 import os
 import json
 
-"""
-This script processes constrained data in a specified directory, return files that can compile but fail tests.
-"""
-
-group = "results5"
-results_dir = "experiments/main/" + group
-output_dir = "processed_" + group
+results_dir = "experiments/main/results_paper"
+output_dir = "processed_results_paper2"
 
 for filename in os.listdir(results_dir):
     file_path = os.path.join(results_dir, filename)
     if os.path.isfile(file_path):
         with open(file_path, 'r', encoding='utf-8') as f:
-            if "_c" in filename and "_nc" not in filename:
+            if "_nc" in filename:
                 content = f.read()
                 print(f"--- {filename} ---")
                 for line in content.strip().splitlines():
                     data = json.loads(line)
-                    if data["compiler_output"] == "" and not data["tests_passed"] \
-                        and not data["test_output"] == "Timeout" and not data["test_output"] == None \
-                            and not "TypeError" in data["test_output"]["stderr"]:
+                    if not data["tests_passed"]:
                         compiled_output = data["compiled"]
+                        if compiled_output == None:
+                            continue
 
                         new_file_name = data["instance_id"]
                         if "/" in new_file_name:
@@ -31,8 +26,6 @@ for filename in os.listdir(results_dir):
                         # Write file_content to a file named after instance_id
                         if data["test_output"] == "Timeout":
                             file_content = compiled_output + "\n// Timeout"
-                        elif data["test_output"] == None:
-                            file_content = compiled_output + "\n// "
                         else:
                             stderr_with_comment = data["test_output"]["stderr"].replace("\n", "\n// ")
                             file_content = compiled_output + "\n// " + stderr_with_comment
