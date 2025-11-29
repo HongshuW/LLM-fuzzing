@@ -1,6 +1,6 @@
 import json
 
-file_path = "experiments/main/results2/humaneval_google_gemma-2-9b-it_s=0_t=1_translate_c.jsonl"
+file_path = "experiments/main/results2_baseline/humaneval_google_gemma-2-9b-it_s=0_t=1_translate_c.jsonl"
 
 def read_jsonl(file_path):
     """Read a JSONL file and return a list of dictionaries."""
