@@ -111,6 +111,19 @@ def process_semicolon(prefix, prompt, states, initial_incremental_parse):
         return False, prefix, prompt, states
 
 
+def tokens_overlap(t1, t2):
+    """
+    Check whether two tokens overlap
+    """
+    a = t1.strip()
+    b = t2.strip()
+    if a == "":
+        return b == "" or b == "//"
+    if "//" in b:
+        return True
+    return a in b or b in a
+
+
 def sample_constrained(
     device="mps",  # the device to load the model onto
     model_name="google/gemma-2-2b-it",
@@ -193,6 +206,8 @@ def sample_constrained(
                 past = None
 
             delete(loading_str, _pflush)
+            _found = False
+            _next_prefix = None
             for _ in range(max_tokens):
                 current_resample = None
                 if states is None and constrain:
@@ -230,6 +245,8 @@ def sample_constrained(
                             top_k_indices = torch.multinomial(
                                 probs, num_samples=try_top_k
                             )
+                        
+                        # first iteration
                         for i in range(try_top_k):
                             next_token_index = top_k_indices[:, i]
                             if i != 0:
@@ -256,7 +273,53 @@ def sample_constrained(
                             if len(next_states) != 0:
                                 found = True
                                 states = next_states
+                                start_index = i
                                 break
+
+                        next_token = true_next_token_mapping(
+                            next_token_index, tokenizer, input_ids
+                        )
+
+                        # second iteration
+                        if not _found and next_token.strip() != "" and next_token.strip() != "//":
+                            count = 0
+                            for i in range(try_top_k):
+                                if i <= start_index:
+                                    continue
+                                count += 1
+                                if count == 3:
+                                    break
+                                _next_token_index = top_k_indices[:, i]
+                                if i != 0:
+                                    _best_choice = False
+                                    _current_resample = (
+                                        len(prefix) + len(prompt),
+                                        i,
+                                        probs[:, _next_token_index.item()].item(),
+                                    )
+                                if _next_token_index.item() == tokenizer.eos_token_id:
+                                    if eos_ok:
+                                        _found = True
+                                        break
+                                    continue
+                                _next_token_cand = true_next_token_mapping(
+                                    _next_token_index,
+                                    tokenizer,
+                                    input_ids,
+                                )
+                                _next_token = true_next_token_mapping(
+                                    _next_token_index, tokenizer, input_ids
+                                )
+                                has_overlap = tokens_overlap(next_token, _next_token)
+                                if not has_overlap:
+                                    _found = True
+                                    break
+
+                            _next_token = true_next_token_mapping(
+                                _next_token_index, tokenizer, input_ids
+                            )
+                            _next_prefix = prompt + _next_token
+
                     if not found:
                         vocab_ids = sorted(tokenizer.get_vocab().values())
                         vocab = batch_true_next_token_mapping(
@@ -290,6 +353,7 @@ def sample_constrained(
                                 True,
                                 None,
                                 resamples,
+                                _next_prefix,
                             )
                 if not found:
                     probs = nn.functional.softmax(logits / temperature, dim=-1)
@@ -328,7 +392,7 @@ def sample_constrained(
                     if not constrain or any(s.accept for s in next_states):
                         delete(checking_str, _pflush)
                         _pflush("==== MODEL EOS: TRUE =======\n")
-                        return prefix + prompt, True, None, resamples
+                        return prefix + prompt, True, None, resamples, _next_prefix
                 delete(checking_str, _pflush)
                 _pflush(next_token if best_choice else colored(next_token, "red"))
                 prompt += next_token
@@ -338,7 +402,7 @@ def sample_constrained(
                 ever_constrained = ever_constrained or constrain
                 if ever_constrained and stop_on_end_constraint and not constrain:
                     _pflush("==== MODEL EOS: FALSE but CONSTRAIN ENDED =======\n")
-                    return prefix + prompt, True, None, resamples
+                    return prefix + prompt, True, None, resamples, _next_prefix
                 # alternatively, end constraining after encountering \n```\n
                 if (
                     constrain_from is None
@@ -348,7 +412,7 @@ def sample_constrained(
                     _pflush(
                         "==== MODEL EOS: FALSE but CONSTRAIN UNTIL ENCOUNTERED =======\n"
                     )
-                    return prefix + prompt, True, None, resamples
+                    return prefix + prompt, True, None, resamples, _next_prefix
                 processed, processed_prefix, processed_prompt, processed_states = (
                     process_semicolon(prefix, prompt, states, initial_incremental_parse)
                 )
@@ -377,13 +441,14 @@ def sample_constrained(
                     else:
                         input_ids = next_token_index.unsqueeze(dim=0)
             _pflush("==== MODEL EOS: FALSE =======\n")
-            return prefix + prompt, False, None, resamples
+            return prefix + prompt, False, None, resamples, _next_prefix
         except Exception as e:
             if reraise:
                 raise e
-            return prefix + prompt, False, e, resamples
+            return prefix + prompt, False, e, resamples, _next_prefix
     # only way to get here is through timeout
-    return prefix + prompt, False, TimeoutError("Sampling timed out"), resamples
+    print("timeout")
+    return prefix + prompt, False, TimeoutError("Sampling timed out"), resamples, _next_prefix
 
 
 def sample_n_constrained(

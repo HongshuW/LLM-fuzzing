@@ -182,7 +182,9 @@ def main(
         # run through all instances
         for instance in tqdm(sorted(dataset, key=lambda x: x["name"])[:limit]):
             trial = 0
+            _next_prefix = None
             while trial < trials:
+                print(str(trial) + "/" + str(trials) + " trials")
                 if instance["name"] in already_done and task_id is None:
                     continue
                 if task_id is not None and not any(
@@ -263,10 +265,16 @@ def main(
                     messages, tokenize=False, add_generation_prompt=True
                 )
                 suffix = f"```{human_readable_target_lang.lower()}\n"
-                prompt += suffix + first_code_line
+                if _next_prefix is None:
+                    prompt += suffix + first_code_line
+                else:
+                    prompt += suffix + _next_prefix
+                
+                print(prompt)
+
                 start = time.time()
                 with torch.no_grad():
-                    code, eos, crashed, resamples = sample_constrained(
+                    code, eos, crashed, resamples, _next_prefix = sample_constrained(
                         device=device,
                         model_name=model_name,
                         prompt=prompt,
@@ -292,7 +300,10 @@ def main(
                     tests = tests[tests.find("}") + 1 :]
                 compilable = extracted + "\n\n" + tests
 
-                compiler_output = compile_test_and_dump(
+                print()
+                print("code:\n" + extracted)
+
+                compiler_output, tests_passed = compile_test_and_dump(
                         output_file,
                         trial == trials - 1, # is last trial
                         {
@@ -321,10 +332,14 @@ def main(
                     print("Compiler output:", compiler_output)
                     trial += 1
                 else:
-                    break
+                    if not tests_passed:
+                        break
+                    else:
+                        trial += 1
 
 
 def compile_test_and_dump(output_file: str, is_last_trial: bool, specs: dict):
+    print("is last trial:", is_last_trial)
     try:
         compiled, compiler_output = LANGUAGE_COMPILER_MAP[specs["language"]](
             specs["compilable"], specs["timeout"]
@@ -332,7 +347,7 @@ def compile_test_and_dump(output_file: str, is_last_trial: bool, specs: dict):
 
         # if compiler_output is not empty, there are compilation errors
         if not compiler_output == None and not compiler_output.strip() == "" and not is_last_trial:
-            return compiler_output
+            return compiler_output, None
 
         if compiled is not None:
             tests_passed, test_output = LANGUAGE_TEST_MAP[specs["language"]](
@@ -344,6 +359,15 @@ def compile_test_and_dump(output_file: str, is_last_trial: bool, specs: dict):
         specs["compiler_output"] = compiler_output
         specs["tests_passed"] = tests_passed
         specs["test_output"] = test_output
+        if is_last_trial:
+            specs["trials"] = 2
+        else:
+            specs["trials"] = 1
+
+        print("Tests passed: " + str(tests_passed))
+
+        if tests_passed and not is_last_trial:
+            return None, tests_passed
 
         with open(output_file, "a") as f:
             print(
@@ -362,7 +386,7 @@ def compile_test_and_dump(output_file: str, is_last_trial: bool, specs: dict):
         traceback.print_exc()
         print("", flush=True)
     
-    return None
+    return None, tests_passed
 
 
 if __name__ == "__main__":
