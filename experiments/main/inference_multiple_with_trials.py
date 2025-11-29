@@ -265,11 +265,16 @@ def main(
                     messages, tokenize=False, add_generation_prompt=True
                 )
                 suffix = f"```{human_readable_target_lang.lower()}\n"
+                
+                # our method
                 if _next_prefix is None:
                     prompt += suffix + first_code_line
                 else:
                     prompt += suffix + _next_prefix
                 
+                # # baseline
+                # prompt += suffix + first_code_line
+
                 print(prompt)
 
                 start = time.time()

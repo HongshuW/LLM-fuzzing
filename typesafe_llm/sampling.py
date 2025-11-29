@@ -280,6 +280,7 @@ def sample_constrained(
                             next_token_index, tokenizer, input_ids
                         )
 
+                        # baseline: comment out the second iteration
                         # second iteration
                         if not _found and next_token.strip() != "" and next_token.strip() != "//":
                             count = 0

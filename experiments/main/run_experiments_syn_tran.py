@@ -187,11 +187,21 @@ def main(
             suffix = "c"
         else:
             suffix = "nc"
+        
+        # our method
         command = (
             f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple_with_trials.py "
             f"--max-tokens {max_tokens} --timeout {timeout} --model_name {model} --seed {seed} --temp {temp} --subset {subset}  --try_top_k {try_top_k} "
             f"--constrained {constrained} --output_file 'results{trials}/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}{name}_{suffix}.jsonl' --trials {trials} {config}"
         )
+
+        # # baseline
+        # command = (
+        #     f"CUDA_VISIBLE_DEVICES={','.join(str(i) for i in cuda_devices)} python3 inference_multiple_with_trials.py "
+        #     f"--max-tokens {max_tokens} --timeout {timeout} --model_name {model} --seed {seed} --temp {temp} --subset {subset}  --try_top_k {try_top_k} "
+        #     f"--constrained {constrained} --output_file 'results{trials}_baseline/{subset}_{model.replace('/', '_')}_s={seed}_t={temp}{name}_{suffix}.jsonl' --trials {trials} {config}"
+        # )
+        
         print("+ " + command)
         pipe = subprocess.Popen(["/bin/bash", "-c", command], cwd=parent)
         running_configs.append((total_config, pipe))
